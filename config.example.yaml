@@ -1,0 +1,120 @@
+# Vigil Technical Issue Tracker Agent — example configuration.
+#
+# Copy this to `config.yaml` (or any path) and pass it with `--config`.
+# Secrets may be supplied here or via the environment variables noted below;
+# environment variables always win over the file.
+
+# ---------------------------------------------------------------------------
+# Slack
+# ---------------------------------------------------------------------------
+slack:
+  # Channel name (with or without leading '#') or channel ID (Cxxxx / Gxxxx).
+  # An ID is preferred and avoids a name->ID lookup on every run.
+  channel: "#vigil-technical-issues"
+
+  # Bot token. Prefer the SLACK_BOT_TOKEN env var over committing this.
+  # Required scopes: channels:history (public) or groups:history (private),
+  # channels:read / groups:read, users:read.
+  bot_token: null  # env: SLACK_BOT_TOKEN
+
+  # Identities of the diagnostic bots that reply with a verdict.
+  # Match on Slack user/bot ID (Uxxxx/Bxxxx) or a case-insensitive display name.
+  bot_identities:
+    - "Justinbot"
+    - "Cursor"
+
+  # How long (minutes) to look back when associating a *separate* top-level bot
+  # message to a user message by task identifier.
+  reply_match_window_minutes: 120
+
+# ---------------------------------------------------------------------------
+# Task link detection
+# ---------------------------------------------------------------------------
+# A message qualifies only if it contains a Mercor Studio annotator task link.
+# The capture group 1 must be the stable `task_<id>` identifier.
+task_link_pattern: "https://studio\\.mercor\\.com/annotator/tasks/(task_[0-9a-f]{32})/?(\\?\\S*)?"
+
+# ---------------------------------------------------------------------------
+# No-issue / not-stuck detection
+# ---------------------------------------------------------------------------
+# A bot reply matching any of these (case-insensitive substring) is treated as
+# a "no issue" verdict and the message is ignored permanently. The LLM is used
+# as a tie-breaker for replies that match none of these phrases.
+no_issue_detection:
+  phrases:
+    - "no issue"
+    - "no issues"
+    - "not stuck"
+    - "task is not stuck"
+    - "task isn't stuck"
+    - "nothing wrong"
+    - "working as expected"
+    - "no problem found"
+    - "no problems found"
+    - "everything looks fine"
+    - "looks fine"
+    - "all good"
+    - "resolved itself"
+
+# ---------------------------------------------------------------------------
+# Classification (Anthropic / Claude)
+# ---------------------------------------------------------------------------
+classification:
+  api_key: null            # env: ANTHROPIC_API_KEY
+  model: "claude-opus-4-8"
+  # Minimum confidence [0,1] to attach an occurrence to an existing category.
+  # Below this, a new category is created.
+  match_confidence_threshold: 0.75
+
+# ---------------------------------------------------------------------------
+# Google Sheets / Drive
+# ---------------------------------------------------------------------------
+google:
+  # Path to a service-account JSON key. Prefer GOOGLE_APPLICATION_CREDENTIALS.
+  credentials_path: null   # env: GOOGLE_APPLICATION_CREDENTIALS
+
+  # Option A: point at an existing spreadsheet by ID (must be shared with the
+  # service account as Editor).
+  sheet_id: null
+
+  # Option B: create/find a sheet by name, optionally inside a Drive folder.
+  sheet_name: "Vigil Technical Issues Tracker"
+  drive_folder_id: null
+
+# ---------------------------------------------------------------------------
+# Scheduling & general
+# ---------------------------------------------------------------------------
+schedule:
+  # Either an interval in minutes, or a cron expression (cron wins if set).
+  interval_minutes: 15
+  cron: null               # e.g. "*/15 * * * *"
+
+# How far back to scan on the very first run, when no cursor exists yet.
+first_run_lookback_hours: 24
+
+# Timezone for stored/displayed timestamps. Named zone so PDT/PST track DST.
+timezone: "America/Los_Angeles"
+
+# Seed categories for the issue registry. New categories are appended at runtime.
+seed_categories:
+  - id: "stuck_autoqc"
+    name: "Stuck AutoQC"
+    description: >-
+      An AutoQC process started but failed to progress past a stage and remains
+      in a running or pending state well beyond its expected completion time.
+      The task neither finishes nor errors out cleanly, so it requires manual
+      intervention to find the blocking step and restart or unblock the pipeline.
+  - id: "incomplete_taiga_run"
+    name: "Incomplete Taiga run"
+    description: >-
+      A Taiga run began executing but stopped before producing all expected
+      outputs. Some stages completed while others did not, leaving the run in a
+      partial state where downstream steps cannot proceed until the missing
+      outputs are regenerated.
+  - id: "no_taiga_run_started"
+    name: "No Taiga run started"
+    description: >-
+      A task that should have triggered a Taiga run shows no sign that the run
+      was ever initiated. The expected pipeline never launched, so there are no
+      logs or outputs to inspect, which usually points to a trigger,
+      configuration, or upstream dependency problem rather than the run itself.
