@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vigil-tracker"
+version = "1.0.0"
+description = "Agent that tracks recurring technical issues from Slack into Google Sheets."
+requires-python = ">=3.9"
+dependencies = [
+    "anthropic>=0.40.0",
+    "slack_sdk>=3.27.0",
+    "gspread>=6.0.0",
+    "google-auth>=2.30.0",
+    "PyYAML>=6.0",
+    "croniter>=2.0.0",
+]
+
+[project.scripts]
+vigil-tracker = "vigil_tracker.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["vigil_tracker*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

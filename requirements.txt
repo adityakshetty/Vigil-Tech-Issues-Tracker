@@ -1,0 +1,6 @@
+anthropic>=0.40.0
+slack_sdk>=3.27.0
+gspread>=6.0.0
+google-auth>=2.30.0
+PyYAML>=6.0
+croniter>=2.0.0
